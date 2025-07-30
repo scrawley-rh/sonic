@@ -2,7 +2,7 @@
 
 // The base URL for your backend API. You will need to replace this
 // with the actual URL provided by your OpenShift deployment.
-const API_BASE_URL = 'https://sonic-backend.apps.shift.crawleyrocks.com'; // <-- IMPORTANT: This is now your public route URL
+const API_BASE_URL = 'https://sonic-backend.apps.shift.crawleyrocks.com'; 
 
 // --- INITIALIZATION ---
 let userData = null;
@@ -58,7 +58,7 @@ const gameScreen = document.getElementById('game-screen');
 const avatarScreen = document.getElementById('avatar-screen');
 const sentenceModeScreen = document.getElementById('sentence-mode-screen');
 const leaderboardScreen = document.getElementById('leaderboard-screen');
-const leaderboardBtn = document.getElementById('leaderboard-btn');
+const levelSelectScreen = document.getElementById('level-select-screen');
 const playerStats = document.getElementById('player-stats');
 const typingInput = document.getElementById('typing-input');
 const wordContainer = document.getElementById('word-container');
@@ -92,7 +92,6 @@ async function loadPlayerData() {
             playerStats.classList.remove('hidden');
             showScreen('main-menu');
         } else {
-            // New player, prompt for name.
             document.getElementById('name-modal').classList.remove('hidden');
             userData = {
                 displayName: '',
@@ -136,26 +135,27 @@ function updateUI() {
 
 // --- SCREEN MANAGEMENT ---
 function showScreen(screenId) {
-    ['main-menu', 'game-screen', 'avatar-screen', 'sentence-mode-screen', 'leaderboard-screen'].forEach(id => {
+    ['main-menu', 'game-screen', 'avatar-screen', 'sentence-mode-screen', 'leaderboard-screen', 'level-select-screen'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
     });
     const screenEl = document.getElementById(screenId);
     if(screenEl) screenEl.classList.remove('hidden');
 
-    if (screenId === 'game-screen') startGame();
+    if (screenId === 'level-select-screen') populateLevelSelect();
     if (screenId === 'sentence-mode-screen') setupSentenceMode();
     if (screenId === 'leaderboard-screen') loadLeaderboard();
 }
 
 // --- EVENT LISTENERS ---
-document.getElementById('start-game-btn').addEventListener('click', () => showScreen('game-screen'));
+document.getElementById('start-game-btn').addEventListener('click', () => showScreen('level-select-screen'));
 document.getElementById('avatar-select-btn').addEventListener('click', () => showScreen('avatar-screen'));
 document.getElementById('sentence-mode-btn').addEventListener('click', () => showScreen('sentence-mode-screen'));
 document.getElementById('leaderboard-btn').addEventListener('click', () => showScreen('leaderboard-screen'));
 document.getElementById('back-to-menu-from-avatar').addEventListener('click', () => showScreen('main-menu'));
 document.getElementById('back-to-menu-from-sentence').addEventListener('click', () => showScreen('main-menu'));
 document.getElementById('back-to-menu-from-leaderboard').addEventListener('click', () => showScreen('main-menu'));
+document.getElementById('back-to-menu-from-level-select').addEventListener('click', () => showScreen('main-menu'));
 
 document.getElementById('submit-name-btn').addEventListener('click', async () => {
     const playerNameInput = document.getElementById('player-name-input');
@@ -171,6 +171,29 @@ document.getElementById('submit-name-btn').addEventListener('click', async () =>
         playerNameInput.placeholder = "Name can't be empty!";
     }
 });
+
+// --- LEVEL SELECTION ---
+function populateLevelSelect() {
+    const levelGrid = document.getElementById('level-select-grid');
+    levelGrid.innerHTML = '';
+    levels.forEach((level, index) => {
+        const isUnlocked = index <= userData.highestLevel;
+        const levelButton = document.createElement('button');
+        levelButton.className = 'btn-sonic p-4 text-xl flex flex-col items-center justify-center rounded-lg h-24';
+        
+        if (!isUnlocked) {
+            levelButton.disabled = true;
+            levelButton.style.opacity = '0.6';
+            levelButton.innerHTML = `Level ${index + 1}<span class="text-sm mt-1">(Locked)</span>`;
+        } else {
+            levelButton.innerHTML = `Level ${index + 1}<span class="text-sm mt-1">Goal: ${level.goal}</span>`;
+            levelButton.addEventListener('click', () => {
+                startGame(index); // Pass the selected level index
+            });
+        }
+        levelGrid.appendChild(levelButton);
+    });
+}
 
 // --- AVATAR SCREEN ---
 function updateAvatarScreen() {
@@ -204,9 +227,11 @@ function updateAvatarScreen() {
 }
 
 // --- GAME LOGIC ---
-function startGame() {
+function startGame(levelToStart) {
+    showScreen('game-screen');
     isGameRunning = true;
-    currentLevel = userData.highestLevel < levels.length ? userData.highestLevel : levels.length - 1;
+    currentLevel = levelToStart;
+    
     let combinedWords = [];
     for (let i = 0; i <= currentLevel; i++) {
         combinedWords = [...combinedWords, ...levels[i].words];
@@ -458,7 +483,8 @@ document.getElementById('modal-close-btn').addEventListener('click', () => {
 
 document.getElementById('modal-next-level-btn').addEventListener('click', () => {
     document.getElementById('message-modal').classList.add('hidden');
-    startGame();
+    // The level just completed was 'currentLevel', so the next is 'currentLevel + 1'
+    startGame(currentLevel + 1);
 });
 
 // --- App Entry Point ---
