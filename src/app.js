@@ -1,58 +1,19 @@
-// Firebase Imports
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+// --- LOCAL STORAGE BASED - NO FIREBASE ---
 
-// --- CONFIGURATION ---
-// Helper function to check if the config is just a placeholder
-const isConfigPlaceholder = (config) => {
-    return !config || config.apiKey === "YOUR_API_KEY";
+// Helper function to get data from localStorage
+const getLocalData = () => {
+    const data = localStorage.getItem('sonicTypingTrainerData');
+    return data ? JSON.parse(data) : null;
 };
 
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "YOUR_API_KEY", authDomain: "YOUR_AUTH_DOMAIN", projectId: "YOUR_PROJECT_ID" };
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'sonic-typing-trainer';
+// Helper function to save data to localStorage
+const saveLocalData = (data) => {
+    localStorage.setItem('sonicTypingTrainerData', JSON.stringify(data));
+};
 
-// --- FIREBASE INITIALIZATION ---
-let app;
-let auth;
-let db;
 
-if (isConfigPlaceholder(firebaseConfig)) {
-    // If config is a placeholder, show an error and don't initialize Firebase
-    console.error("Firebase configuration is missing. Please set it up in your deployment environment.");
-    // We can also show this message to the user in a modal.
-    document.addEventListener('DOMContentLoaded', () => {
-        showMessage("Configuration Error", "Could not connect to the server. The application is not configured correctly. Please contact the administrator.");
-    });
-} else {
-    app = initializeApp(firebaseConfig);
-    auth = getAuth(app);
-    db = getFirestore(app);
-    // Proceed with authentication state listener only if Firebase is initialized
-    onAuthStateChanged(auth, async (user) => {
-        if (user) {
-            userId = user.uid;
-            await loadPlayerData();
-            if (userData && userData.displayName) {
-                showScreen('main-menu');
-                playerStats.classList.remove('hidden');
-            }
-        } else {
-            console.log("No user signed in. Trying anonymous sign-in.");
-            try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            } catch (error) {
-                console.error("Error signing in:", error);
-                showMessage("Error", "Could not connect to the server. Please refresh.");
-            }
-        }
-    });
-}
-
+// --- INITIALIZATION ---
+let userData = null;
 
 // --- GAME ASSETS & CONFIG ---
 const avatars = [
@@ -137,7 +98,7 @@ const mainMenu = document.getElementById('main-menu');
 const gameScreen = document.getElementById('game-screen');
 const avatarScreen = document.getElementById('avatar-screen');
 const sentenceModeScreen = document.getElementById('sentence-mode-screen');
-const leaderboardScreen = document.getElementById('leaderboard-screen');
+const leaderboardBtn = document.getElementById('leaderboard-btn');
 const playerStats = document.getElementById('player-stats');
 const typingInput = document.getElementById('typing-input');
 const wordContainer = document.getElementById('word-container');
@@ -154,18 +115,13 @@ let sessionWords = []; // Words for the current level session
 let isGameRunning = false;
 
 // --- DATA LOADING & UI FUNCTIONS ---
-async function loadPlayerData() {
-    const userDocRef = doc(db, `artifacts/${appId}/users/${userId}/profile`, 'data');
-    const docSnap = await getDoc(userDocRef);
+function loadPlayerData() {
+    userData = getLocalData();
 
-    if (docSnap.exists()) {
-        userData = docSnap.data();
-        if (!userData.displayName) {
-            document.getElementById('name-modal').classList.remove('hidden');
-        }
-        if (!userData.leaderboardStats) {
-            userData.leaderboardStats = { avgWpm: 0, accuracy: 0, totalWords: 0, gamesPlayed: 0 };
-        }
+    if (userData) {
+        // Player exists, show main menu
+        playerStats.classList.remove('hidden');
+        showScreen('main-menu');
     } else {
         // New player, prompt for name.
         document.getElementById('name-modal').classList.remove('hidden');
@@ -175,16 +131,17 @@ async function loadPlayerData() {
             currentAvatar: 'sonic',
             emeralds: 0,
             highestLevel: 0,
-            leaderboardStats: { avgWpm: 0, accuracy: 0, totalWords: 0, gamesPlayed: 0 }
+            // WPM/Accuracy stats are no longer global, but we can keep them for fun
+            wpm: 0,
+            accuracy: 0,
         };
     }
     updateUI();
 }
 
-async function savePlayerData() {
-    if (!userId || !userData) return;
-    const userDocRef = doc(db, `artifacts/${appId}/users/${userId}/profile`, 'data');
-    await setDoc(userDocRef, userData, { merge: true });
+function savePlayerData() {
+    if (!userData) return;
+    saveLocalData(userData);
 }
 
 function updateUI() {
@@ -200,7 +157,7 @@ function updateUI() {
 
 // --- SCREEN MANAGEMENT ---
 function showScreen(screenId) {
-    ['main-menu', 'game-screen', 'avatar-screen', 'sentence-mode-screen', 'leaderboard-screen'].forEach(id => {
+    ['main-menu', 'game-screen', 'avatar-screen', 'sentence-mode-screen'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.add('hidden');
     });
@@ -209,16 +166,19 @@ function showScreen(screenId) {
 
     if (screenId === 'game-screen') startGame();
     if (screenId === 'sentence-mode-screen') setupSentenceMode();
-    if (screenId === 'leaderboard-screen') loadLeaderboard();
 }
 
 // --- EVENT LISTENERS ---
 document.getElementById('start-game-btn').addEventListener('click', () => showScreen('game-screen'));
 document.getElementById('avatar-select-btn').addEventListener('click', () => showScreen('avatar-screen'));
 document.getElementById('sentence-mode-btn').addEventListener('click', () => showScreen('sentence-mode-screen'));
-document.getElementById('leaderboard-btn').addEventListener('click', () => showScreen('leaderboard-screen'));
+// Leaderboard button is now disabled
+leaderboardBtn.disabled = true;
+leaderboardBtn.style.opacity = '0.5';
+leaderboardBtn.title = "Leaderboard is disabled in this version.";
+
+
 document.getElementById('back-to-menu-from-avatar').addEventListener('click', () => showScreen('main-menu'));
-document.getElementById('back-to-menu-from-leaderboard').addEventListener('click', () => showScreen('main-menu'));
 document.getElementById('back-to-menu-from-sentence').addEventListener('click', () => showScreen('main-menu'));
 
 document.getElementById('submit-name-btn').addEventListener('click', async () => {
@@ -226,7 +186,7 @@ document.getElementById('submit-name-btn').addEventListener('click', async () =>
     const newName = playerNameInput.value.trim();
     if (newName && newName.length > 0) {
         userData.displayName = newName;
-        await savePlayerData();
+        savePlayerData();
         document.getElementById('name-modal').classList.add('hidden');
         playerStats.classList.remove('hidden');
         showScreen('main-menu');
@@ -462,73 +422,14 @@ document.getElementById('submit-sentence-btn').addEventListener('click', () => {
     document.getElementById('submit-sentence-btn').classList.add('hidden');
     document.getElementById('next-sentence-btn').classList.remove('hidden');
 
-    updateLeaderboardStats(wpm, accuracy, wordsTyped);
+    // Save personal bests
+    userData.wpm = Math.max(userData.wpm || 0, wpm);
+    userData.accuracy = Math.max(userData.accuracy || 0, accuracy);
+    savePlayerData();
 });
 
 document.getElementById('next-sentence-btn').addEventListener('click', setupSentenceMode);
 
-async function updateLeaderboardStats(wpm, accuracy, wordsTyped) {
-    if (!userData.leaderboardStats) {
-        userData.leaderboardStats = { avgWpm: 0, accuracy: 0, totalWords: 0, gamesPlayed: 0 };
-    }
-    const stats = userData.leaderboardStats;
-    const totalGames = stats.gamesPlayed + 1;
-
-    stats.avgWpm = Math.round(((stats.avgWpm * stats.gamesPlayed) + wpm) / totalGames);
-    stats.accuracy = Math.round(((stats.accuracy * stats.gamesPlayed) + accuracy) / totalGames);
-    stats.totalWords += wordsTyped;
-    stats.gamesPlayed = totalGames;
-
-    await savePlayerData();
-
-    const leaderboardDocRef = doc(db, `artifacts/${appId}/public/data/leaderboard`, userId);
-    await setDoc(leaderboardDocRef, {
-        displayName: userData.displayName || 'Anonymous',
-        avgWpm: stats.avgWpm,
-        accuracy: stats.accuracy,
-        totalWords: stats.totalWords
-    });
-}
-
-// --- LEADERBOARD ---
-async function loadLeaderboard() {
-    const leaderboardBody = document.getElementById('leaderboard-body');
-    leaderboardBody.innerHTML = '<tr><td colspan="5" class="text-center p-4">Loading...</td></tr>';
-
-    try {
-        const leaderboardCollectionRef = collection(db, `artifacts/${appId}/public/data/leaderboard`);
-        const querySnapshot = await getDocs(leaderboardCollectionRef);
-
-        let leaderboardData = [];
-        querySnapshot.forEach((doc) => {
-            leaderboardData.push(doc.data());
-        });
-
-        leaderboardData.sort((a, b) => b.avgWpm - a.avgWpm || b.accuracy - a.accuracy);
-
-        leaderboardBody.innerHTML = '';
-        if (leaderboardData.length === 0) {
-            leaderboardBody.innerHTML = '<tr><td colspan="5" class="text-center p-4">No data yet. Play sentence mode!</td></tr>';
-            return;
-        }
-
-        leaderboardData.slice(0, 10).forEach((player, index) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td class="p-2">${index + 1}</td>
-                <td class="p-2">${player.displayName}</td>
-                <td class="p-2">${player.avgWpm}</td>
-                <td class="p-2">${player.accuracy}%</td>
-                <td class="p-2">${player.totalWords}</td>
-            `;
-            leaderboardBody.appendChild(row);
-        });
-
-    } catch (error) {
-        console.error("Error loading leaderboard:", error);
-        leaderboardBody.innerHTML = '<tr><td colspan="5" class="text-center p-4">Could not load leaderboard.</td></tr>';
-    }
-}
 
 // --- MODAL / MESSAGING ---
 function showMessage(title, message) {
@@ -587,4 +488,10 @@ document.getElementById('modal-close-btn').addEventListener('click', () => {
 document.getElementById('modal-next-level-btn').addEventListener('click', () => {
     document.getElementById('message-modal').classList.add('hidden');
     startGame();
+});
+
+// --- App Entry Point ---
+// This will run once the DOM is fully loaded and ready.
+document.addEventListener('DOMContentLoaded', () => {
+    loadPlayerData();
 });
