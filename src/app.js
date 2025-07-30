@@ -2,7 +2,7 @@
 
 // The base URL for your backend API. You will need to replace this
 // with the actual URL provided by your OpenShift deployment.
-const API_BASE_URL = 'https://sonic-backend.apps.shift.crawleyrocks.com '; // <-- IMPORTANT: CHANGE THIS AFTER DEPLOYMENT
+const API_BASE_URL = 'https://sonic-backend.apps.shift.crawleyrocks.com'; // <-- IMPORTANT: This is now your public route URL
 
 // --- INITIALIZATION ---
 let userData = null;
@@ -106,7 +106,7 @@ async function loadPlayerData() {
         updateUI();
     } catch (error) {
         console.error('Failed to load player data:', error);
-        showMessage('Connection Error', 'Could not connect to the game server. Please ensure the backend is running.');
+        showMessage('Connection Error', 'Could not connect to the game server. Please ensure the backend is running and the route is correct.');
     }
 }
 
