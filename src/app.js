@@ -4,15 +4,55 @@ import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged }
 import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 // --- CONFIGURATION ---
+// Helper function to check if the config is just a placeholder
+const isConfigPlaceholder = (config) => {
+    return !config || config.apiKey === "YOUR_API_KEY";
+};
+
 const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "YOUR_API_KEY", authDomain: "YOUR_AUTH_DOMAIN", projectId: "YOUR_PROJECT_ID" };
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'sonic-typing-trainer';
 
 // --- FIREBASE INITIALIZATION ---
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-let userId = null;
-let userData = null;
+let app;
+let auth;
+let db;
+
+if (isConfigPlaceholder(firebaseConfig)) {
+    // If config is a placeholder, show an error and don't initialize Firebase
+    console.error("Firebase configuration is missing. Please set it up in your deployment environment.");
+    // We can also show this message to the user in a modal.
+    document.addEventListener('DOMContentLoaded', () => {
+        showMessage("Configuration Error", "Could not connect to the server. The application is not configured correctly. Please contact the administrator.");
+    });
+} else {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+    // Proceed with authentication state listener only if Firebase is initialized
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            userId = user.uid;
+            await loadPlayerData();
+            if (userData && userData.displayName) {
+                showScreen('main-menu');
+                playerStats.classList.remove('hidden');
+            }
+        } else {
+            console.log("No user signed in. Trying anonymous sign-in.");
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Error signing in:", error);
+                showMessage("Error", "Could not connect to the server. Please refresh.");
+            }
+        }
+    });
+}
+
 
 // --- GAME ASSETS & CONFIG ---
 const avatars = [
@@ -58,7 +98,7 @@ const sentences = [
     "Amy Rose chases Sonic with her Piko Piko Hammer.",
     "Silver the Hedgehog travels from the future.",
     "Blaze the Cat is a princess from another dimension.",
-    "Sometimes Aunt Nicole dresses up like Sonic and runs around the yard",
+    "Sometimes Aunt Nicole dresses up like Sonic and runs around the yard.",
     "Cream the Rabbit is often accompanied by her Chao, Cheese.",
     "The Tornado is Sonic's trusty biplane.",
     "Chaos is a water creature and a powerful god.",
@@ -113,30 +153,7 @@ let activeWords = [];
 let sessionWords = []; // Words for the current level session
 let isGameRunning = false;
 
-// --- AUTHENTICATION & DATA LOADING ---
-onAuthStateChanged(auth, async (user) => {
-    if (user) {
-        userId = user.uid;
-        await loadPlayerData();
-        if (userData && userData.displayName) {
-            showScreen('main-menu');
-            playerStats.classList.remove('hidden');
-        }
-    } else {
-        console.log("No user signed in. Trying anonymous sign-in.");
-        try {
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await signInWithCustomToken(auth, __initial_auth_token);
-            } else {
-                await signInAnonymously(auth);
-            }
-        } catch (error) {
-            console.error("Error signing in:", error);
-            showMessage("Error", "Could not connect to the server. Please refresh.");
-        }
-    }
-});
-
+// --- DATA LOADING & UI FUNCTIONS ---
 async function loadPlayerData() {
     const userDocRef = doc(db, `artifacts/${appId}/users/${userId}/profile`, 'data');
     const docSnap = await getDoc(userDocRef);
@@ -171,18 +188,24 @@ async function savePlayerData() {
 }
 
 function updateUI() {
+    if (!userData) return;
     document.getElementById('emeralds-count').textContent = userData.emeralds;
     document.getElementById('user-id-display').textContent = userData.displayName || 'Guest';
-    playerAvatar.src = avatars.find(a => a.id === userData.currentAvatar).img;
+    const currentAvatarData = avatars.find(a => a.id === userData.currentAvatar);
+    if (currentAvatarData) {
+        playerAvatar.src = currentAvatarData.img;
+    }
     updateAvatarScreen();
 }
 
 // --- SCREEN MANAGEMENT ---
 function showScreen(screenId) {
     ['main-menu', 'game-screen', 'avatar-screen', 'sentence-mode-screen', 'leaderboard-screen'].forEach(id => {
-        document.getElementById(id).classList.add('hidden');
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
     });
-    document.getElementById(screenId).classList.remove('hidden');
+    const screenEl = document.getElementById(screenId);
+    if(screenEl) screenEl.classList.remove('hidden');
 
     if (screenId === 'game-screen') startGame();
     if (screenId === 'sentence-mode-screen') setupSentenceMode();
@@ -216,6 +239,7 @@ document.getElementById('submit-name-btn').addEventListener('click', async () =>
 // --- AVATAR SCREEN ---
 function updateAvatarScreen() {
     const avatarGrid = document.getElementById('avatar-grid');
+    if (!avatarGrid || !userData) return;
     avatarGrid.innerHTML = '';
     avatars.forEach(avatar => {
         const isUnlocked = userData.unlockedAvatars.includes(avatar.id);
@@ -224,7 +248,7 @@ function updateAvatarScreen() {
         const avatarDiv = document.createElement('div');
         avatarDiv.className = `p-4 rounded-lg cursor-pointer border-4 ${isSelected ? 'border-yellow-400' : 'border-transparent'} ${!isUnlocked ? 'bg-black bg-opacity-50' : ''}`;
         avatarDiv.innerHTML = `
-            <img src="${avatar.img}" alt="${avatar.name}" class="mx-auto ${!isUnlocked ? 'locked' : 'unlocked'}">
+            <img src="${avatar.img}" alt="${avatar.name}" class="mx-auto ${!isUnlocked ? 'locked' : 'unlocked'}" onerror="this.src='https://placehold.co/100x100/CCCCCC/FFFFFF?text=Error'; this.onerror=null;">
             <p class="mt-2">${avatar.name}</p>
             ${!isUnlocked ? `<p class="text-yellow-400">${avatar.cost} Emeralds</p>` : ''}
         `;
@@ -254,12 +278,10 @@ function startGame() {
     isGameRunning = true;
     currentLevel = userData.highestLevel < levels.length ? userData.highestLevel : levels.length - 1;
 
-    // Initialize the word pool for the current session
     let combinedWords = [];
     for (let i = 0; i <= currentLevel; i++) {
         combinedWords = [...combinedWords, ...levels[i].words];
     }
-    // Create a unique set of words and then shuffle it
     sessionWords = [...new Set(combinedWords)];
     sessionWords.sort(() => Math.random() - 0.5);
 
@@ -319,7 +341,6 @@ function startWordFall() {
 function createWord() {
     if (!isGameRunning) return;
 
-    // If we've used all words in the session, repopulate them.
     if (sessionWords.length === 0) {
         let combinedWords = [];
         for (let i = 0; i <= currentLevel; i++) {
@@ -329,11 +350,10 @@ function createWord() {
         sessionWords.sort(() => Math.random() - 0.5);
     }
 
-    // Get a word and remove it from the session pool
     const wordIndex = Math.floor(Math.random() * sessionWords.length);
     const wordText = sessionWords.splice(wordIndex, 1)[0];
 
-    if (!wordText) return; // Failsafe
+    if (!wordText) return;
 
     const wordEl = document.createElement('div');
     wordEl.textContent = wordText;
@@ -512,32 +532,49 @@ async function loadLeaderboard() {
 
 // --- MODAL / MESSAGING ---
 function showMessage(title, message) {
-    document.getElementById('modal-title').textContent = title;
-    document.getElementById('modal-message').textContent = message;
-    document.getElementById('modal-emeralds').innerHTML = '';
-    document.getElementById('modal-next-level-btn').classList.add('hidden');
-    document.getElementById('message-modal').classList.remove('hidden');
+    const modalTitle = document.getElementById('modal-title');
+    const modalMessage = document.getElementById('modal-message');
+    const modalEmeralds = document.getElementById('modal-emeralds');
+    const nextLevelBtn = document.getElementById('modal-next-level-btn');
+    const messageModal = document.getElementById('message-modal');
+
+    if (modalTitle) modalTitle.textContent = title;
+    if (modalMessage) modalMessage.textContent = message;
+    if (modalEmeralds) modalEmeralds.innerHTML = '';
+    if (nextLevelBtn) nextLevelBtn.classList.add('hidden');
+    if (messageModal) messageModal.classList.remove('hidden');
 }
 
 function showLevelCompleteModal(emeraldsWon) {
-    document.getElementById('modal-title').textContent = `Level ${currentLevel + 1} Complete!`;
-    let message = `You earned ${emeraldsWon} Chaos Emeralds!`;
+    const modalTitle = document.getElementById('modal-title');
+    const modalMessage = document.getElementById('modal-message');
     const emeraldsContainer = document.getElementById('modal-emeralds');
-    emeraldsContainer.innerHTML = '';
-    for (let i = 0; i < emeraldsWon; i++) {
-        const emeraldEl = document.createElement('div');
-        emeraldEl.className = 'chaos-emerald';
-        emeraldsContainer.appendChild(emeraldEl);
+    const nextLevelBtn = document.getElementById('modal-next-level-btn');
+    const messageModal = document.getElementById('message-modal');
+
+    if(modalTitle) modalTitle.textContent = `Level ${currentLevel + 1} Complete!`;
+    
+    let message = `You earned ${emeraldsWon} Chaos Emeralds!`;
+    
+    if(emeraldsContainer) {
+        emeraldsContainer.innerHTML = '';
+        for (let i = 0; i < emeraldsWon; i++) {
+            const emeraldEl = document.createElement('div');
+            emeraldEl.className = 'chaos-emerald';
+            emeraldsContainer.appendChild(emeraldEl);
+        }
     }
 
-    const nextLevelBtn = document.getElementById('modal-next-level-btn');
-    if (currentLevel < levels.length - 1) {
-        nextLevelBtn.classList.remove('hidden');
-    } else {
-        message += "\n\nYou've beaten all the levels!";
+    if (nextLevelBtn) {
+        if (currentLevel < levels.length - 1) {
+            nextLevelBtn.classList.remove('hidden');
+        } else {
+            message += "\n\nYou've beaten all the levels!";
+        }
     }
-    document.getElementById('modal-message').textContent = message;
-    document.getElementById('message-modal').classList.remove('hidden');
+    
+    if(modalMessage) modalMessage.textContent = message;
+    if(messageModal) messageModal.classList.remove('hidden');
 }
 
 document.getElementById('modal-close-btn').addEventListener('click', () => {
@@ -551,4 +588,3 @@ document.getElementById('modal-next-level-btn').addEventListener('click', () => 
     document.getElementById('message-modal').classList.add('hidden');
     startGame();
 });
-
