@@ -2,7 +2,7 @@
 
 // The base URL for your backend API. You will need to replace this
 // with the actual URL provided by your OpenShift deployment.
-const API_BASE_URL = 'http://localhost:8080'; // <-- IMPORTANT: CHANGE THIS AFTER DEPLOYMENT
+const API_BASE_URL = 'https://sonic-backend.apps.shift.crawleyrocks.com '; // <-- IMPORTANT: CHANGE THIS AFTER DEPLOYMENT
 
 // --- INITIALIZATION ---
 let userData = null;
