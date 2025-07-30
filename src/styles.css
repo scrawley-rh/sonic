@@ -1,1 +1,53 @@
+/* General Body and Font Styling */
+body {
+    font-family: 'Press Start 2P', cursive;
+    background-color: #0078f8; /* Sonic Blue */
+    color: #ffffff;
+    text-shadow: 2px 2px 4px #000000;
+}
+
+/* Game Container with Background Image */
+.game-container {
+    /* The '..' goes up one directory from 'src' to find the 'assets' folder */
+    background-image: url('../assets/images/green-hill-bg.jpg');
+    background-size: cover;
+    background-position: center;
+    border: 8px solid #f8d800; /* Sonic Gold */
+    box-shadow: 0 0 20px #000000;
+}
+
+/* Custom Button Styling */
+.btn-sonic {
+    background-color: #f8d800;
+    color: #000000;
+    border: 2px solid #000000;
+    box-shadow: 4px 4px 0 #000000;
+    transition: all 0.1s ease-in-out;
+}
+
+.btn-sonic:hover {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0 #000000;
+}
+
+/* Chaos Emerald Reward Styling */
+.chaos-emerald {
+    width: 30px;
+    height: 30px;
+    background-color: #4caf50; /* Default Green */
+    border: 2px solid white;
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    display: inline-block;
+    margin: 0 5px;
+    box-shadow: 0 0 10px #ffffff;
+}
+
+/* Avatar Lock/Unlock Visuals */
+.unlocked {
+    filter: brightness(1);
+}
+
+.locked {
+    filter: grayscale(1) brightness(0.5);
+}
 
