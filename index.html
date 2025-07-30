@@ -39,6 +39,15 @@
             <button id="leaderboard-btn" class="btn-sonic text-2xl px-8 py-4 m-2">Leaderboard</button>
         </div>
 
+        <!-- Level Selection Screen -->
+        <div id="level-select-screen" class="hidden text-center">
+            <h2 class="text-3xl mb-4">Select Level</h2>
+            <div id="level-select-grid" class="grid grid-cols-3 md:grid-cols-5 gap-4 mb-4">
+                <!-- Level buttons will be injected here by JS -->
+            </div>
+            <button id="back-to-menu-from-level-select" class="btn-sonic px-6 py-3">Back to Menu</button>
+        </div>
+
         <!-- Avatar Selection Screen -->
         <div id="avatar-screen" class="hidden text-center">
             <h2 class="text-3xl mb-4">Select Your Character</h2>
@@ -131,4 +140,3 @@
     <script type="module" src="src/app.js"></script>
 </body>
 </html>
-
