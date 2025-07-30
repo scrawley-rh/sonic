@@ -15,11 +15,10 @@ app.use(express.json()); // Enable parsing of JSON request bodies
 // --- Database Connection ---
 // The connection details will be read from environment variables
 // that you set in your OpenShift deployment.
+// The SSL configuration has been removed to allow non-SSL connections
+// to the internal OpenShift database.
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false // Required for some cloud database connections
-  }
 });
 
 // --- API Routes ---
@@ -45,14 +44,15 @@ app.get('/api/leaderboard', async (req, res) => {
     const result = await pool.query(
       `SELECT data ->> 'displayName' as name, 
               (data -> 'leaderboardStats' ->> 'avgWpm')::int as wpm,
-              (data -> 'leaderboardStats' ->> 'accuracy')::int as accuracy
+              (data -> 'leaderboardStats' ->> 'accuracy')::int as accuracy,
+              (data -> 'leaderboardStats' ->> 'totalWords')::int as totalWords
        FROM players 
        ORDER BY wpm DESC, accuracy DESC 
        LIMIT 10`
     );
     res.json(result.rows);
   } catch (err) {
-    console.error(err);
+    console.error('Failed to fetch leaderboard:', err);
     res.status(500).json({ error: 'Failed to fetch leaderboard' });
   }
 });
@@ -74,7 +74,7 @@ app.post('/api/player', async (req, res) => {
       res.json(null);
     }
   } catch (err) {
-    console.error(err);
+    console.error('Error checking player data:', err);
     res.status(500).json({ error: 'Error checking player data' });
   }
 });
@@ -97,7 +97,7 @@ app.post('/api/save', async (req, res) => {
     await pool.query(query, [id, data]);
     res.status(200).json({ success: true });
   } catch (err) {
-    console.error(err);
+    console.error('Failed to save player data:', err);
     res.status(500).json({ error: 'Failed to save player data' });
   }
 });
