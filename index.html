@@ -1,1 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sonic Typing Trainer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <!-- Link to your new stylesheet -->
+    <link rel="stylesheet" href="src/styles.css">
+</head>
+<body class="flex items-center justify-center min-h-screen">
+
+    <div id="app" class="w-full max-w-4xl mx-auto p-4">
+
+        <!-- Header -->
+        <div class="text-center mb-4">
+            <h1 class="text-4xl md:text-5xl">Sonic Typing Trainer</h1>
+            <p class="text-lg">Gotta Type Fast!</p>
+        </div>
+
+        <!-- Player Stats -->
+        <div id="player-stats" class="flex justify-between items-center mb-4 p-2 bg-black bg-opacity-50 rounded-lg hidden">
+            <div>
+                <span>Emeralds: </span>
+                <span id="emeralds-count">0</span>
+            </div>
+            <div>
+                <span>Player: </span>
+                <span id="user-id-display"></span>
+            </div>
+        </div>
+
+        <!-- Main Menu -->
+        <div id="main-menu" class="text-center">
+            <button id="start-game-btn" class="btn-sonic text-2xl px-8 py-4 m-2">Start Game</button>
+            <button id="avatar-select-btn" class="btn-sonic text-2xl px-8 py-4 m-2">Avatars</button>
+            <button id="sentence-mode-btn" class="btn-sonic text-2xl px-8 py-4 m-2">Sentence Mode</button>
+            <button id="leaderboard-btn" class="btn-sonic text-2xl px-8 py-4 m-2">Leaderboard</button>
+        </div>
+
+        <!-- Avatar Selection Screen -->
+        <div id="avatar-screen" class="hidden text-center">
+            <h2 class="text-3xl mb-4">Select Your Character</h2>
+            <div id="avatar-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                <!-- Avatars will be injected here by JS -->
+            </div>
+            <button id="back-to-menu-from-avatar" class="btn-sonic px-6 py-3">Back</button>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="hidden">
+            <div class="game-container relative w-full h-[400px] md:h-[600px] rounded-lg p-4 overflow-hidden">
+                <div id="word-container" class="absolute inset-0"></div>
+                <img id="player-avatar" src="" class="absolute bottom-4 left-1/2 -translate-x-1/2 h-20" alt="Player Avatar">
+            </div>
+            <div class="mt-4 flex justify-between items-center bg-black bg-opacity-50 p-2 rounded-lg">
+                <div>Level: <span id="level-display">1</span></div>
+                <div>Score: <span id="score-display">0</span></div>
+                <div>Time: <span id="time-display">60</span></div>
+            </div>
+            <input type="text" id="typing-input" class="w-full mt-4 p-3 text-xl text-black rounded-lg" placeholder="Start typing here..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+        </div>
+
+        <!-- Sentence Mode Screen -->
+        <div id="sentence-mode-screen" class="hidden">
+            <h2 class="text-3xl mb-4 text-center">Sentence Mode</h2>
+            <div class="bg-black bg-opacity-50 p-4 rounded-lg mb-4">
+                <p id="sentence-text" class="text-2xl leading-relaxed"></p>
+            </div>
+            <textarea id="sentence-input" class="w-full p-3 text-xl text-black rounded-lg" rows="4" placeholder="Type the sentence here..."></textarea>
+            <div class="mt-4 flex justify-between items-center">
+                <div>WPM: <span id="wpm-display">0</span></div>
+                <div>Accuracy: <span id="accuracy-display">100</span>%</div>
+            </div>
+             <div class="text-center mt-4">
+                <button id="submit-sentence-btn" class="btn-sonic px-6 py-3">Submit</button>
+                <button id="next-sentence-btn" class="btn-sonic px-6 py-3 hidden">Next Sentence</button>
+                <button id="back-to-menu-from-sentence" class="btn-sonic px-6 py-3">Back to Menu</button>
+            </div>
+        </div>
+
+        <!-- Leaderboard Screen -->
+        <div id="leaderboard-screen" class="hidden">
+            <h2 class="text-3xl mb-4 text-center">Leaderboard</h2>
+            <div class="bg-black bg-opacity-50 p-4 rounded-lg">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr>
+                            <th class="p-2">Rank</th>
+                            <th class="p-2">Player</th>
+                            <th class="p-2">Avg. WPM</th>
+                            <th class="p-2">Accuracy</th>
+                            <th class="p-2">Total Words</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-body">
+                        <!-- Leaderboard data will be injected here -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="text-center mt-4">
+                <button id="back-to-menu-from-leaderboard" class="btn-sonic px-6 py-3">Back</button>
+            </div>
+        </div>
+
+        <!-- Modal for messages -->
+        <div id="message-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+            <div class="bg-blue-800 p-8 rounded-lg text-center max-w-sm">
+                <h3 id="modal-title" class="text-2xl mb-4"></h3>
+                <p id="modal-message" class="mb-6"></p>
+                <div id="modal-emeralds" class="flex justify-center mb-4"></div>
+                <button id="modal-next-level-btn" class="btn-sonic px-6 py-3 mr-2 hidden">Next Level</button>
+                <button id="modal-close-btn" class="btn-sonic px-6 py-3">OK</button>
+            </div>
+        </div>
+        
+        <!-- Name Input Modal -->
+        <div id="name-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+            <div class="bg-blue-800 p-8 rounded-lg text-center max-w-sm">
+                <h3 class="text-2xl mb-4">Welcome, Player!</h3>
+                <p class="mb-4">Please enter your name:</p>
+                <input type="text" id="player-name-input" class="w-full p-3 text-xl text-black rounded-lg mb-4" maxlength="12" placeholder="Max 12 characters">
+                <button id="submit-name-btn" class="btn-sonic px-6 py-3">Save Name</button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Link to your new JavaScript file -->
+    <script type="module" src="src/app.js"></script>
+</body>
+</html>
 
